@@ -1,4 +1,7 @@
-const GRID_SIZE: usize = 8;
+use std::io::{self, Write};
+use std::{thread, time};
+
+const GRID_SIZE: usize = 16;
 
 struct GameState {
     state: [bool; GRID_SIZE * GRID_SIZE],
@@ -17,6 +20,71 @@ impl GameState {
             *field = rand::random();
         }
         new_game
+    }
+
+    pub fn from_previous(previous: &GameState) -> GameState {
+        let mut next = GameState::new();
+
+        let mut i = 0;
+        while i < GRID_SIZE * GRID_SIZE {
+            let mut total = 0;
+            let (x, y) = GameState::coords_from_index(i);
+
+            // top row
+            if previous.state[GameState::index_from_coords(x - 1, y - 1)] {
+                total += 1
+            };
+            if previous.state[GameState::index_from_coords(x, y - 1)] {
+                total += 1
+            };
+            if previous.state[GameState::index_from_coords(x + 1, y - 1)] {
+                total += 1
+            };
+            // left/right
+            if previous.state[GameState::index_from_coords(x - 1, y)] {
+                total += 1
+            };
+            if previous.state[GameState::index_from_coords(x + 1, y)] {
+                total += 1
+            };
+            // bottom row
+            if previous.state[GameState::index_from_coords(x - 1, y + 1)] {
+                total += 1
+            };
+            if previous.state[GameState::index_from_coords(x, y + 1)] {
+                total += 1
+            };
+            if previous.state[GameState::index_from_coords(x + 1, y + 1)] {
+                total += 1
+            };
+
+            next.state[i] = total == 2 || total == 3;
+
+            i += 1;
+        }
+
+        next
+    }
+
+    fn coords_from_index(i: usize) -> (i32, i32) {
+        assert!(i < GRID_SIZE * GRID_SIZE);
+        let x: i32 = (i % GRID_SIZE).try_into().unwrap();
+        let y: i32 = (i / GRID_SIZE).try_into().unwrap();
+        (x, y)
+    }
+
+    fn index_from_coords(x: i32, y: i32) -> usize {
+        let size_as_i32: i32 = TryInto::<i32>::try_into(GRID_SIZE).unwrap();
+
+        // wrap grid edge
+        let wrapped_x = x.rem_euclid(size_as_i32);
+        let wrapped_y = y.rem_euclid(size_as_i32);
+
+        assert!(wrapped_x >= 0);
+        assert!(wrapped_y >= 0);
+
+        let idx = wrapped_y * size_as_i32 + wrapped_x;
+        idx.try_into().unwrap()
     }
 
     pub fn print(&self) {
@@ -38,6 +106,21 @@ impl GameState {
 }
 
 fn main() {
-    let state = GameState::from_random();
-    state.print();
+    let mut back = GameState::from_random();
+    let mut front: GameState;
+    back.print();
+    println!("------ <start>");
+    let mut i = 0;
+    while i < 32 {
+        front = GameState::from_previous(&back);
+        front.print();
+        println!("------ {}", i);
+        io::stdout().flush().unwrap();
+
+        let ten_millis = time::Duration::from_millis(100);
+        thread::sleep(ten_millis);
+
+        back = front;
+        i += 1;
+    }
 }
