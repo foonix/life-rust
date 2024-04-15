@@ -1,11 +1,26 @@
 use game_impls::cpu;
+use std::env;
 use std::io::{self, Write};
 use std::{thread, time};
 
 mod game_impls;
 
 fn main() {
-    let mut back = cpu::GameState::from_random(16);
+    let args: Vec<String> = env::args().collect();
+    dbg!(&args);
+    let mut size: usize = 16;
+    if args.len() > 1 {
+        let parsed = args[1].parse();
+        match parsed {
+            Ok(parsed_size) => size = parsed_size,
+            _ => panic!(
+                "Game size parameter ({}) must be positive intiger.",
+                args[2]
+            ),
+        }
+    }
+
+    let mut back = cpu::GameState::from_random(size);
     let mut front: cpu::GameState;
     back.print();
     println!("------ <start>");
