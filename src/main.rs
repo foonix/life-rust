@@ -5,7 +5,7 @@ use std::{thread, time};
 mod game_impls;
 
 fn main() {
-    let mut back = cpu::GameState::from_random();
+    let mut back = cpu::GameState::from_random(16);
     let mut front: cpu::GameState;
     back.print();
     println!("------ <start>");
