@@ -101,3 +101,15 @@ impl GameState {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::GameState;
+
+    #[test]
+    fn smoke() {
+        let state1 = GameState::from_random();
+        let state2 = GameState::from_previous(&state1);
+        state2.print();
+    }
+}
