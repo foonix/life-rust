@@ -19,6 +19,17 @@ impl GameState {
         new_game
     }
 
+    // For now, this is just a test harness.
+    // Maybe save/load later.
+    #[cfg(test)]
+    pub fn from_vec(size: usize, vec: &Vec<bool>) -> GameState {
+        assert!(size * size == vec.len());
+        GameState {
+            game_size: size,
+            state: vec.to_owned(),
+        }
+    }
+
     pub fn from_previous(previous: &GameState) -> GameState {
         let mut next = GameState::new(previous.game_size);
 
@@ -55,7 +66,12 @@ impl GameState {
                 total += 1
             };
 
-            next.state[i] = total == 2 || total == 3;
+            // rules differ if the current cell is live or not
+            if previous.state[i] {
+                next.state[i] = total == 2 || total == 3;
+            } else {
+                next.state[i] = total == 3;
+            }
 
             i += 1;
         }
@@ -111,5 +127,134 @@ mod tests {
         let state1 = GameState::from_random(32);
         let state2 = GameState::from_previous(&state1);
         state2.print();
+    }
+
+    #[test]
+    fn zeros_stay_zeros() {
+        let start = vec![
+            false, false, false, false, //
+            false, false, false, false, //
+            false, false, false, false, //
+            false, false, false, false,
+        ];
+
+        let state1 = GameState::from_vec(4, &start);
+        let state2 = GameState::from_previous(&state1);
+
+        assert!(state2.state == start);
+    }
+
+    #[test]
+    fn structure_tub() {
+        let start = vec![
+            false, false, false, false, false, //
+            false, false, true, false, false, //
+            false, true, false, true, false, //
+            false, false, true, false, false, //
+            false, false, false, false, false,
+        ];
+
+        let state1 = GameState::from_vec(5, &start);
+        state1.print();
+        let state2 = GameState::from_previous(&state1);
+        state2.print();
+
+        assert!(state2.state == start);
+    }
+
+    #[test]
+    fn structure_box() {
+        let start = vec![
+            false, false, false, false, //
+            false, true, true, false, //
+            false, true, true, false, //
+            false, false, false, false,
+        ];
+
+        let state1 = GameState::from_vec(4, &start);
+        state1.print();
+        let state2 = GameState::from_previous(&state1);
+        state2.print();
+
+        assert!(state2.state == start);
+    }
+
+    // same as box test, but in the game corner to test wrapping behavior.
+    #[test]
+    fn structure_box_wrapped() {
+        let start = vec![
+            true, false, false, true, //
+            false, false, false, false, //
+            false, false, false, false, //
+            true, false, false, true,
+        ];
+
+        let state1 = GameState::from_vec(4, &start);
+        state1.print();
+        let state2 = GameState::from_previous(&state1);
+        state2.print();
+
+        assert!(state2.state == start);
+    }
+
+    #[test]
+    fn structure_blinker() {
+        let start = vec![
+            false, false, false, false, false, //
+            false, false, true, false, false, //
+            false, false, true, false, false, //
+            false, false, true, false, false, //
+            false, false, false, false, false,
+        ];
+        let expected_mid = vec![
+            false, false, false, false, false, //
+            false, false, false, false, false, //
+            false, true, true, true, false, //
+            false, false, false, false, false, //
+            false, false, false, false, false,
+        ];
+
+        let state1 = GameState::from_vec(5, &start);
+        state1.print();
+        let state2 = GameState::from_previous(&state1);
+        state2.print();
+        let state3 = GameState::from_previous(&state2);
+        state3.print();
+
+        assert!(state2.state == expected_mid);
+        // verify that it repeats in 2 cycles
+        assert!(state3.state == start);
+    }
+
+    #[test]
+    fn structure_beacon() {
+        let start = vec![
+            false, false, false, false, false, false, //
+            false, true, true, false, false,  false, //
+            false, true, true, false, false,  false, //
+            false, false, false, true, true,  false, //
+            false, false, false, true, true, false, //
+            false, false, false, false, false, false,
+        ];
+        // the middle two blink
+        let expected_mid = vec![
+            false, false, false, false, false, false, //
+            false, true, true, false, false,  false, //
+            false, true, false, false, false,  false, //
+            false, false, false, false, true,  false, //
+            false, false, false, true, true, false, //
+            false, false, false, false, false, false,
+        ];
+
+        let state1 = GameState::from_vec(6, &start);
+        state1.print();
+        let state2 = GameState::from_previous(&state1);
+        state2.print();
+        let state3 = GameState::from_previous(&state2);
+        state3.print();
+
+        assert!(state2.state == expected_mid);
+        // verify that it repeats in 2 cycles
+        assert!(state3.state == start);
     }
 }
