@@ -111,7 +111,7 @@ impl GameState {
                 print! {"0"};
             }
             if (i + 1) % (self.game_size) == 0 {
-                print!("\n");
+                println!();
             }
             i += 1;
         }
