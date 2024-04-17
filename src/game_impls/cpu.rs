@@ -32,48 +32,30 @@ impl GameState {
 
     pub fn from_previous(previous: &GameState) -> GameState {
         let mut next = GameState::new(previous.game_size);
+        let size_as_i32: i32 = TryInto::<i32>::try_into(previous.game_size).unwrap();
 
-        let mut i = 0;
-        while i < next.game_size * next.game_size {
+        for i in 0..next.game_size * next.game_size {
             let mut total = 0;
-            let (x, y) = GameState::coords_from_index(&next, i);
+            let (this_x, this_y) = GameState::coords_from_index(&next, i);
+            for neighbor_y in -1..=1 {
+                for neighbor_x in -1..=1 {
+                    if neighbor_x != 0 || neighbor_y != 0 {
+                        let neighbor_x_abs = (this_x + neighbor_x).rem_euclid(size_as_i32) as usize;
+                        let neighbor_y_abs = (this_y + neighbor_y).rem_euclid(size_as_i32) as usize;
 
-            // top row
-            if previous.state[GameState::index_from_coords(&next, x - 1, y - 1)] {
-                total += 1
-            };
-            if previous.state[GameState::index_from_coords(&next, x, y - 1)] {
-                total += 1
-            };
-            if previous.state[GameState::index_from_coords(&next, x + 1, y - 1)] {
-                total += 1
-            };
-            // left/right
-            if previous.state[GameState::index_from_coords(&next, x - 1, y)] {
-                total += 1
-            };
-            if previous.state[GameState::index_from_coords(&next, x + 1, y)] {
-                total += 1
-            };
-            // bottom row
-            if previous.state[GameState::index_from_coords(&next, x - 1, y + 1)] {
-                total += 1
-            };
-            if previous.state[GameState::index_from_coords(&next, x, y + 1)] {
-                total += 1
-            };
-            if previous.state[GameState::index_from_coords(&next, x + 1, y + 1)] {
-                total += 1
-            };
-
+                        let neighbor_idx_abs = neighbor_y_abs * next.game_size + neighbor_x_abs;
+                        if previous.state[neighbor_idx_abs] {
+                            total += 1;
+                        }
+                    }
+                }
+            }
             // rules differ if the current cell is live or not
             if previous.state[i] {
                 next.state[i] = total == 2 || total == 3;
             } else {
                 next.state[i] = total == 3;
             }
-
-            i += 1;
         }
 
         next
@@ -84,20 +66,6 @@ impl GameState {
         let x: i32 = (i % self.game_size).try_into().unwrap();
         let y: i32 = (i / self.game_size).try_into().unwrap();
         (x, y)
-    }
-
-    fn index_from_coords(&self, x: i32, y: i32) -> usize {
-        let size_as_i32: i32 = TryInto::<i32>::try_into(self.game_size).unwrap();
-
-        // wrap grid edge
-        let wrapped_x = x.rem_euclid(size_as_i32);
-        let wrapped_y = y.rem_euclid(size_as_i32);
-
-        debug_assert!(wrapped_x >= 0);
-        debug_assert!(wrapped_y >= 0);
-
-        let idx = wrapped_y * size_as_i32 + wrapped_x;
-        idx.try_into().unwrap()
     }
 
     pub fn print(&self) {
