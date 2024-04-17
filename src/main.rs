@@ -24,8 +24,7 @@ fn main() {
     let mut front: cpu::GameState;
     back.print();
     println!("------ <start>");
-    let mut i = 0;
-    while i < 32 {
+    for i in 0..32 {
         front = cpu::GameState::from_previous(&back);
         front.print();
         println!("------ {}", i);
@@ -35,6 +34,5 @@ fn main() {
         thread::sleep(ten_millis);
 
         back = front;
-        i += 1;
     }
 }
