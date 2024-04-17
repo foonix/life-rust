@@ -23,7 +23,7 @@ impl GameState {
     // Maybe save/load later.
     #[cfg(test)]
     pub fn from_vec(size: usize, vec: &Vec<bool>) -> GameState {
-        assert!(size * size == vec.len());
+        debug_assert!(size * size == vec.len());
         GameState {
             game_size: size,
             state: vec.to_owned(),
@@ -80,7 +80,7 @@ impl GameState {
     }
 
     fn coords_from_index(&self, i: usize) -> (i32, i32) {
-        assert!(i < self.game_size * self.game_size);
+        debug_assert!(i < self.game_size * self.game_size);
         let x: i32 = (i % self.game_size).try_into().unwrap();
         let y: i32 = (i / self.game_size).try_into().unwrap();
         (x, y)
@@ -93,8 +93,8 @@ impl GameState {
         let wrapped_x = x.rem_euclid(size_as_i32);
         let wrapped_y = y.rem_euclid(size_as_i32);
 
-        assert!(wrapped_x >= 0);
-        assert!(wrapped_y >= 0);
+        debug_assert!(wrapped_x >= 0);
+        debug_assert!(wrapped_y >= 0);
 
         let idx = wrapped_y * size_as_i32 + wrapped_x;
         idx.try_into().unwrap()
@@ -230,18 +230,18 @@ mod tests {
     fn structure_beacon() {
         let start = vec![
             false, false, false, false, false, false, //
-            false, true, true, false, false,  false, //
-            false, true, true, false, false,  false, //
-            false, false, false, true, true,  false, //
+            false, true, true, false, false, false, //
+            false, true, true, false, false, false, //
+            false, false, false, true, true, false, //
             false, false, false, true, true, false, //
             false, false, false, false, false, false,
         ];
         // the middle two blink
         let expected_mid = vec![
             false, false, false, false, false, false, //
-            false, true, true, false, false,  false, //
-            false, true, false, false, false,  false, //
-            false, false, false, false, true,  false, //
+            false, true, true, false, false, false, //
+            false, true, false, false, false, false, //
+            false, false, false, false, true, false, //
             false, false, false, true, true, false, //
             false, false, false, false, false, false,
         ];
