@@ -35,27 +35,7 @@ impl GameState {
         let size_as_i32: i32 = TryInto::<i32>::try_into(previous.game_size).unwrap();
 
         for i in 0..next.game_size * next.game_size {
-            let mut total = 0;
-            let (this_x, this_y) = GameState::coords_from_index(&next, i);
-            for neighbor_y in -1..=1 {
-                for neighbor_x in -1..=1 {
-                    if neighbor_x != 0 || neighbor_y != 0 {
-                        let neighbor_x_abs = (this_x + neighbor_x).rem_euclid(size_as_i32) as usize;
-                        let neighbor_y_abs = (this_y + neighbor_y).rem_euclid(size_as_i32) as usize;
-
-                        let neighbor_idx_abs = neighbor_y_abs * next.game_size + neighbor_x_abs;
-                        if previous.state[neighbor_idx_abs] {
-                            total += 1;
-                        }
-                    }
-                }
-            }
-            // rules differ if the current cell is live or not
-            if previous.state[i] {
-                next.state[i] = total == 2 || total == 3;
-            } else {
-                next.state[i] = total == 3;
-            }
+            next.state[i] = previous.next_state_for(i, size_as_i32);
         }
 
         next
@@ -66,6 +46,30 @@ impl GameState {
         let x: i32 = (i % self.game_size).try_into().unwrap();
         let y: i32 = (i / self.game_size).try_into().unwrap();
         (x, y)
+    }
+
+    fn next_state_for(&self, i: usize, size_as_i32: i32) -> bool {
+        let mut total = 0;
+        let (this_x, this_y) = GameState::coords_from_index(&self, i);
+        for neighbor_y in -1..=1 {
+            for neighbor_x in -1..=1 {
+                if neighbor_x != 0 || neighbor_y != 0 {
+                    let neighbor_x_abs = (this_x + neighbor_x).rem_euclid(size_as_i32) as usize;
+                    let neighbor_y_abs = (this_y + neighbor_y).rem_euclid(size_as_i32) as usize;
+
+                    let neighbor_idx_abs = neighbor_y_abs * self.game_size + neighbor_x_abs;
+                    if self.state[neighbor_idx_abs] {
+                        total += 1;
+                    }
+                }
+            }
+        }
+        // rules differ if the current cell is live or not
+        if self.state[i] {
+            return total == 2 || total == 3;
+        } else {
+            return total == 3;
+        }
     }
 
     pub fn print(&self) {
