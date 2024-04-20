@@ -3,7 +3,7 @@ use std::env;
 use std::io::{self, Write};
 use std::{thread, time};
 
-mod game_impls;
+use life_rust::game_impls;
 
 fn main() {
     let args: Vec<String> = env::args().collect();

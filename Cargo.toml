@@ -14,3 +14,6 @@ criterion = "0.5"
 [[bench]]
 name = "cpu_game_benchmark"
 harness = false
+
+[profile.bench]
+debug = 1

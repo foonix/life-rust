@@ -1,3 +1,7 @@
+use std::sync::Arc;
+use std::sync::Mutex;
+use std::thread;
+
 pub struct GameState {
     game_size: usize,
     state: Vec<bool>,
@@ -39,6 +43,51 @@ impl GameState {
         }
 
         next
+    }
+
+    pub fn from_previous_parallel(previous: &GameState, threads: usize) -> GameState {
+        let next_state = vec![false; previous.game_size * previous.game_size];
+
+        let previous_arc = Arc::new(previous);
+        let next_arc = Arc::new(Mutex::new(next_state));
+
+        let target_thread_slice_size = (previous.game_size * previous.game_size).div_ceil(threads);
+
+        let scope_next_arc = next_arc.clone();
+        let size_as_i32: i32 = TryInto::<i32>::try_into(previous.game_size).unwrap();
+
+        thread::scope(move |s| {
+            let mut next_thread_offset = 0;
+
+            for _ in 0..threads {
+                let thread_next_arc = scope_next_arc.clone();
+                let thread_slize_size;
+                let thread_offset = next_thread_offset;
+                if thread_offset + target_thread_slice_size < previous_arc.state.len() {
+                    thread_slize_size = target_thread_slice_size;
+                } else {
+                    thread_slize_size = previous_arc.state.len() - thread_offset;
+                }
+                next_thread_offset += thread_slize_size;
+
+                s.spawn(move || {
+                    let start = thread_offset;
+                    let end = thread_offset + thread_slize_size;
+                    for i in start..end {
+                        let alive = previous.next_state_for(i, size_as_i32);
+                        {
+                            let state = &mut thread_next_arc.lock().unwrap();
+                            state[i] = alive;
+                        }
+                    }
+                });
+            }
+        });
+
+        GameState {
+            game_size: previous.game_size,
+            state: Arc::try_unwrap(next_arc).unwrap().into_inner().unwrap(),
+        }
     }
 
     fn coords_from_index(&self, i: usize) -> (i32, i32) {
@@ -146,6 +195,23 @@ mod tests {
         let state1 = GameState::from_vec(4, &start);
         state1.print();
         let state2 = GameState::from_previous(&state1);
+        state2.print();
+
+        assert!(state2.state == start);
+    }
+
+    #[test]
+    fn structure_box_parallel() {
+        let start = vec![
+            false, false, false, false, //
+            false, true, true, false, //
+            false, true, true, false, //
+            false, false, false, false,
+        ];
+
+        let state1 = GameState::from_vec(4, &start);
+        state1.print();
+        let state2 = GameState::from_previous_parallel(&state1, 4);
         state2.print();
 
         assert!(state2.state == start);
