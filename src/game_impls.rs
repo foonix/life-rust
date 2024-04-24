@@ -6,6 +6,31 @@ mod tests {
     use super::cpu::GameState;
     use crate::Gol;
 
+    #[test]
+    fn cpu_structure_tub() {
+        structure_tub_tester::<GameState>();
+    }
+
+    #[test]
+    fn cpu_structure_box() {
+        structure_box_tester::<cpu::GameState>();
+    }
+
+    #[test]
+    fn cpu_structure_box_wrapped() {
+        structure_box_wrapped_tester::<GameState>();
+    }
+
+    #[test]
+    fn cpu_structure_blinker() {
+        structure_blinker_tester::<GameState>();
+    }
+
+    #[test]
+    fn cpu_structure_beacon() {
+        structure_beacon_tester::<GameState>();
+    }
+
     fn structure_tub_tester<T: Gol>() {
         let start = vec![
             false, false, false, false, false, //
@@ -21,11 +46,6 @@ mod tests {
         state2.print();
 
         assert!(state2.to_vec() == start);
-    }
-
-    #[test]
-    fn cpu_structure_tub() {
-        structure_tub_tester::<GameState>();
     }
 
     fn structure_box_tester<T: Gol>() {
@@ -44,11 +64,6 @@ mod tests {
         assert!(state2.to_vec() == start);
     }
 
-    #[test]
-    fn cpu_structure_box() {
-        structure_box_tester::<cpu::GameState>();
-    }
-
     // same as box test, but in the game corner to test wrapping behavior.
     fn structure_box_wrapped_tester<T: Gol>() {
         let start = vec![
@@ -64,11 +79,6 @@ mod tests {
         state2.print();
 
         assert!(state2.to_vec() == start);
-    }
-
-    #[test]
-    fn cpu_structure_box_wrapped() {
-        structure_box_wrapped_tester::<GameState>();
     }
 
     fn structure_blinker_tester<T: Gol>() {
@@ -97,11 +107,6 @@ mod tests {
         assert!(state2.to_vec() == expected_mid);
         // verify that it repeats in 2 cycles
         assert!(state3.to_vec() == start);
-    }
-
-    #[test]
-    fn cpu_structure_blinker() {
-        structure_blinker_tester::<GameState>();
     }
 
     fn structure_beacon_tester<T: Gol>() {
@@ -133,10 +138,5 @@ mod tests {
         assert!(state2.to_vec() == expected_mid);
         // verify that it repeats in 2 cycles
         assert!(state3.to_vec() == start);
-    }
-
-    #[test]
-    fn cpu_structure_beacon() {
-        structure_beacon_tester::<GameState>();
     }
 }
