@@ -39,7 +39,7 @@ mod tests {
             false, false, false, false, false,
         ];
 
-        let state1 = T::from_vec(5, &start);
+        let state1 = T::from_slice(5, &start);
         state1.print();
         let state2 = T::from_previous(&state1);
         state2.print();
@@ -55,7 +55,7 @@ mod tests {
             false, false, false, false,
         ];
 
-        let state1 = T::from_vec(4, &start);
+        let state1 = T::from_slice(4, &start);
         state1.print();
         let state2 = T::from_previous(&state1);
         state2.print();
@@ -72,7 +72,7 @@ mod tests {
             true, false, false, true,
         ];
 
-        let state1 = T::from_vec(4, &start);
+        let state1 = T::from_slice(4, &start);
         state1.print();
         let state2 = T::from_previous(&state1);
         state2.print();
@@ -96,7 +96,7 @@ mod tests {
             false, false, false, false, false,
         ];
 
-        let state1 = T::from_vec(5, &start);
+        let state1 = T::from_slice(5, &start);
         state1.print();
         let state2 = T::from_previous(&state1);
         state2.print();
@@ -127,7 +127,7 @@ mod tests {
             false, false, false, false, false, false,
         ];
 
-        let state1 = T::from_vec(6, &start);
+        let state1 = T::from_slice(6, &start);
         state1.print();
         let state2 = T::from_previous(&state1);
         state2.print();

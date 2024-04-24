@@ -16,7 +16,7 @@ impl Gol for GameState {
         }
     }
 
-    fn from_vec(size: usize, vec: &[bool]) -> GameState {
+    fn from_slice(size: usize, vec: &[bool]) -> GameState {
         debug_assert!(size * size == vec.len());
         GameState {
             game_size: size,
@@ -40,19 +40,11 @@ impl Gol for GameState {
     }
 
     fn print(&self) {
-        let mut i: usize = 0;
-        let len = self.state.len();
-
-        while i < len {
-            if self.state[i] {
-                print!("1");
-            } else {
-                print! {"0"};
-            }
+        for (i, is_alive) in self.state.iter().enumerate() {
+            print!("{}", if *is_alive { "1" } else { "0" });
             if (i + 1) % (self.game_size) == 0 {
                 println!();
             }
-            i += 1;
         }
     }
 }
