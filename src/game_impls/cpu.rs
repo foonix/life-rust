@@ -16,7 +16,7 @@ impl Gol for GameState {
         }
     }
 
-    fn from_vec(size: usize, vec: &Vec<bool>) -> GameState {
+    fn from_vec(size: usize, vec: &[bool]) -> GameState {
         debug_assert!(size * size == vec.len());
         GameState {
             game_size: size,
@@ -82,13 +82,14 @@ impl GameState {
 
             for _ in 0..threads {
                 let thread_next_arc = scope_next_arc.clone();
-                let thread_slize_size;
                 let thread_offset = next_thread_offset;
-                if thread_offset + target_thread_slice_size < previous_arc.state.len() {
-                    thread_slize_size = target_thread_slice_size;
-                } else {
-                    thread_slize_size = previous_arc.state.len() - thread_offset;
-                }
+
+                let thread_slize_size =
+                    if thread_offset + target_thread_slice_size < previous_arc.state.len() {
+                        target_thread_slice_size
+                    } else {
+                        previous_arc.state.len() - thread_offset
+                    };
                 next_thread_offset += thread_slize_size;
 
                 s.spawn(move || {
@@ -120,7 +121,7 @@ impl GameState {
 
     fn next_state_for(&self, i: usize, size_as_i32: i32) -> bool {
         let mut total = 0;
-        let (this_x, this_y) = GameState::coords_from_index(&self, i);
+        let (this_x, this_y) = GameState::coords_from_index(self, i);
         for neighbor_y in -1..=1 {
             for neighbor_x in -1..=1 {
                 if neighbor_x != 0 || neighbor_y != 0 {
@@ -136,9 +137,9 @@ impl GameState {
         }
         // rules differ if the current cell is live or not
         if self.state[i] {
-            return total == 2 || total == 3;
+            total == 2 || total == 3
         } else {
-            return total == 3;
+            total == 3
         }
     }
 }

@@ -2,7 +2,6 @@ pub mod cpu;
 
 #[cfg(test)]
 mod tests {
-    use super::cpu;
     use super::cpu::GameState;
     use crate::Gol;
 
@@ -13,7 +12,7 @@ mod tests {
 
     #[test]
     fn cpu_structure_box() {
-        structure_box_tester::<cpu::GameState>();
+        structure_box_tester::<GameState>();
     }
 
     #[test]
