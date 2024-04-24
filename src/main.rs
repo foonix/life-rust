@@ -4,6 +4,7 @@ use std::io::{self, Write};
 use std::{thread, time};
 
 use life_rust::game_impls;
+use life_rust::Gol;
 
 fn main() {
     let args: Vec<String> = env::args().collect();

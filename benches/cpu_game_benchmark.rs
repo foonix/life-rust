@@ -1,5 +1,6 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use life_rust::game_impls::cpu;
+use life_rust::Gol;
 
 fn run_life(size: usize, iters: usize, parallel: bool) {
     let mut game = cpu::GameState::from_random(size);
