@@ -80,7 +80,7 @@ impl GameState {
         let mut total = 0;
 
         // This is ugly but turned out to be quite a lot faster than using a closure.
-        let at_this = array![
+        let mut neighbors = array![
             [coords.0, coords.1],
             [coords.0, coords.1],
             [coords.0, coords.1],
@@ -91,10 +91,10 @@ impl GameState {
             [coords.0, coords.1],
         ];
 
-        let neighbor_offsets = &at_this + &self.neighbor_offsets;
-        let wrapped_coords = &neighbor_offsets % &self.boundaries;
+        neighbors += &self.neighbor_offsets;
+        neighbors %= &self.boundaries;
 
-        for neighbor_abs in wrapped_coords.rows() {
+        for neighbor_abs in neighbors.rows() {
             total += if self.state[(neighbor_abs[0], neighbor_abs[1])] {
                 1
             } else {

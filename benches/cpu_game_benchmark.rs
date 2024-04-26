@@ -13,7 +13,7 @@ fn run_life(size: usize, iters: usize, parallel: bool) {
     }
 }
 
-fn run_life_ndarray(size: usize, iters: usize, ) {
+fn run_life_ndarray(size: usize, iters: usize) {
     let mut game = cpu_ndarray::GameState::from_random(size);
     for _ in 0..iters {
         game = cpu_ndarray::GameState::from_previous(&game)
