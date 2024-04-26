@@ -1,33 +1,61 @@
 pub mod cpu;
+pub mod cpu_ndarray;
 
 #[cfg(test)]
 mod tests {
-    use super::cpu::GameState;
+    use super::{cpu, cpu_ndarray};
     use crate::Gol;
 
+    // cpu
     #[test]
     fn cpu_structure_tub() {
-        structure_tub_tester::<GameState>();
+        structure_tub_tester::<cpu::GameState>();
     }
 
     #[test]
     fn cpu_structure_box() {
-        structure_box_tester::<GameState>();
+        structure_box_tester::<cpu::GameState>();
     }
 
     #[test]
     fn cpu_structure_box_wrapped() {
-        structure_box_wrapped_tester::<GameState>();
+        structure_box_wrapped_tester::<cpu::GameState>();
     }
 
     #[test]
     fn cpu_structure_blinker() {
-        structure_blinker_tester::<GameState>();
+        structure_blinker_tester::<cpu::GameState>();
     }
 
     #[test]
     fn cpu_structure_beacon() {
-        structure_beacon_tester::<GameState>();
+        structure_beacon_tester::<cpu::GameState>();
+    }
+
+    // cpu_ndarray
+    #[test]
+    fn cpu_ndarray_structure_tub() {
+        structure_tub_tester::<cpu_ndarray::GameState>();
+    }
+
+    #[test]
+    fn cpu_ndarray_ndarray_structure_box() {
+        structure_box_tester::<cpu_ndarray::GameState>();
+    }
+
+    #[test]
+    fn cpu_ndarray_structure_box_wrapped() {
+        structure_box_wrapped_tester::<cpu_ndarray::GameState>();
+    }
+
+    #[test]
+    fn cpu_ndarray_structure_blinker() {
+        structure_blinker_tester::<cpu_ndarray::GameState>();
+    }
+
+    #[test]
+    fn cpu_ndarray_structure_beacon() {
+        structure_beacon_tester::<cpu_ndarray::GameState>();
     }
 
     fn structure_tub_tester<T: Gol>() {
