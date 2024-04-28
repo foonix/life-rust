@@ -32,8 +32,8 @@ impl Gol for GameState {
         let mut next = GameState::new(previous.game_size);
         let size_as_i32: i32 = TryInto::<i32>::try_into(previous.game_size).unwrap();
 
-        for i in 0..next.game_size * next.game_size {
-            next.state[i] = previous.next_state_for(i, size_as_i32);
+        for (next, (i, _)) in next.state.iter_mut().zip(previous.state.iter().enumerate()) {
+            *next = previous.next_state_for(i, size_as_i32);
         }
 
         next
