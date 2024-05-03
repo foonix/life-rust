@@ -1,10 +1,11 @@
 use game_impls::cpu;
+use life_rust::game_impls::compute;
+use life_rust::Gol;
+use life_rust::{game_impls, VulkanContext};
 use std::env;
 use std::io::{self, Write};
+use std::sync::Arc;
 use std::{thread, time};
-
-use life_rust::game_impls;
-use life_rust::Gol;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -15,18 +16,32 @@ fn main() {
         match parsed {
             Ok(parsed_size) => size = parsed_size,
             _ => panic!(
-                "Game size parameter ({}) must be positive intiger.",
+                "Game size parameter ({}) must be a positive integer.",
                 args[2]
             ),
         }
     }
 
-    let mut back = cpu::GameState::from_random(size);
-    let mut front: cpu::GameState;
+    let vulkan_context: Arc<VulkanContext>;
+    let mut back: Box<dyn Gol>;
+    let mut front: Box<dyn Gol>;
+    let vulkan_context_result = VulkanContext::try_create();
+    match vulkan_context_result {
+        Ok(context) => {
+            vulkan_context = Arc::new(context);
+            back = Box::new(compute::GameState::from_random(vulkan_context.clone(), size));
+        }
+        Err(e) => {
+            println!("Failed to initialize Vulkan context: {:?}", e);
+            println!("Falling back on CPU processing.");
+            back = cpu::GameState::from_random(size);
+        }
+    }
+
     back.print();
     println!("------ <start>");
     for i in 0..32 {
-        front = cpu::GameState::from_previous(&back);
+        front = back.to_next();
         front.print();
         println!("------ {}", i);
         io::stdout().flush().unwrap();

@@ -1,9 +1,10 @@
 pub mod cpu;
 pub mod cpu_ndarray;
+pub mod compute;
 
 #[cfg(test)]
 mod tests {
-    use super::{cpu, cpu_ndarray};
+    use super::{cpu, cpu_ndarray, compute};
     use crate::Gol;
 
     // cpu
@@ -58,6 +59,32 @@ mod tests {
         structure_beacon_tester::<cpu_ndarray::GameState>();
     }
 
+    // compute
+    #[test]
+    fn compute_structure_tub() {
+        structure_tub_tester::<compute::GameState>();
+    }
+
+    #[test]
+    fn compute_structure_box() {
+        structure_box_tester::<compute::GameState>();
+    }
+
+    #[test]
+    fn compute_structure_box_wrapped() {
+        structure_box_wrapped_tester::<compute::GameState>();
+    }
+
+    #[test]
+    fn compute_structure_blinker() {
+        structure_blinker_tester::<compute::GameState>();
+    }
+
+    #[test]
+    fn compute_structure_beacon() {
+        structure_beacon_tester::<compute::GameState>();
+    }
+
     fn structure_tub_tester<T: Gol>() {
         let start = vec![
             false, false, false, false, false, //
@@ -69,7 +96,7 @@ mod tests {
 
         let state1 = T::from_slice(5, &start);
         state1.print();
-        let state2 = T::from_previous(&state1);
+        let state2 = state1.to_next();
         state2.print();
 
         assert!(state2.to_vec() == start);
@@ -85,7 +112,7 @@ mod tests {
 
         let state1 = T::from_slice(4, &start);
         state1.print();
-        let state2 = T::from_previous(&state1);
+        let state2 = state1.to_next();
         state2.print();
 
         assert!(state2.to_vec() == start);
@@ -102,7 +129,7 @@ mod tests {
 
         let state1 = T::from_slice(4, &start);
         state1.print();
-        let state2 = T::from_previous(&state1);
+        let state2 = state1.to_next();
         state2.print();
 
         assert!(state2.to_vec() == start);
@@ -126,9 +153,9 @@ mod tests {
 
         let state1 = T::from_slice(5, &start);
         state1.print();
-        let state2 = T::from_previous(&state1);
+        let state2 = state1.to_next();
         state2.print();
-        let state3 = T::from_previous(&state2);
+        let state3 = state2.to_next();
         state3.print();
 
         assert!(state2.to_vec() == expected_mid);
@@ -157,9 +184,9 @@ mod tests {
 
         let state1 = T::from_slice(6, &start);
         state1.print();
-        let state2 = T::from_previous(&state1);
+        let state2 = state1.to_next();
         state2.print();
-        let state3 = T::from_previous(&state2);
+        let state3 = state2.to_next();
         state3.print();
 
         assert!(state2.to_vec() == expected_mid);

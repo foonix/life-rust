@@ -9,14 +9,6 @@ pub struct GameState {
 }
 
 impl Gol for GameState {
-    fn new(size: usize) -> Self {
-        GameState {
-            state: Array::<bool, _>::default((size, size).f()),
-            neighbor_offsets: Self::gen_neighbor_offsets(size, size),
-            boundaries: Self::gen_boundary(size, size),
-        }
-    }
-
     fn from_slice(size: usize, slice: &[bool]) -> GameState {
         debug_assert!(size * size == slice.len());
         let mut state: Array<bool, _> = Array::default((size, size).f());
@@ -41,20 +33,20 @@ impl Gol for GameState {
         vec
     }
 
-    fn from_previous(previous: &GameState) -> GameState {
-        let size = previous.state.dim().0;
+    fn to_next(&self) -> Box<dyn Gol> {
+        let size = self.state.dim().0;
 
         let mut next = GameState {
             state: Array::<bool, _>::default((size, size).f()),
-            neighbor_offsets: previous.neighbor_offsets.to_owned(),
-            boundaries: previous.boundaries.to_owned(),
+            neighbor_offsets: self.neighbor_offsets.to_owned(),
+            boundaries: self.boundaries.to_owned(),
         };
 
-        for (prev, next) in previous.state.indexed_iter().zip(next.state.iter_mut()) {
-            *next = previous.next_state_for(prev.0);
+        for (prev, next) in self.state.indexed_iter().zip(next.state.iter_mut()) {
+            *next = self.next_state_for(prev.0);
         }
 
-        next
+        Box::new(next)
     }
 
     fn print(&self) {
@@ -68,12 +60,19 @@ impl Gol for GameState {
 }
 
 impl GameState {
-    pub fn from_random(size: usize) -> GameState {
+    fn new(size: usize) -> Self {
+        GameState {
+            state: Array::<bool, _>::default((size, size).f()),
+            neighbor_offsets: Self::gen_neighbor_offsets(size, size),
+            boundaries: Self::gen_boundary(size, size),
+        }
+    }
+    pub fn from_random(size: usize) -> Box<dyn Gol> {
         let mut new_game = GameState::new(size);
         for field in &mut new_game.state {
             *field = rand::random();
         }
-        new_game
+        Box::new(new_game)
     }
 
     pub fn next_state_for(&self, coords: (usize, usize)) -> bool {

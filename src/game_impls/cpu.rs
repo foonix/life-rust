@@ -9,13 +9,6 @@ pub struct GameState {
 }
 
 impl Gol for GameState {
-    fn new(size: usize) -> Self {
-        GameState {
-            game_size: size,
-            state: vec![false; size * size],
-        }
-    }
-
     fn from_slice(size: usize, vec: &[bool]) -> GameState {
         debug_assert!(size * size == vec.len());
         GameState {
@@ -28,15 +21,15 @@ impl Gol for GameState {
         self.state.to_vec()
     }
 
-    fn from_previous(previous: &GameState) -> GameState {
-        let mut next = GameState::new(previous.game_size);
-        let size_as_i32: i32 = TryInto::<i32>::try_into(previous.game_size).unwrap();
+    fn to_next(&self) -> Box<dyn Gol> {
+        let mut next = GameState::new(self.game_size);
+        let size_as_i32: i32 = TryInto::<i32>::try_into(self.game_size).unwrap();
 
-        for (next, (i, _)) in next.state.iter_mut().zip(previous.state.iter().enumerate()) {
-            *next = previous.next_state_for(i, size_as_i32);
+        for (next, (i, _)) in next.state.iter_mut().zip(self.state.iter().enumerate()) {
+            *next = self.next_state_for(i, size_as_i32);
         }
 
-        next
+        Box::new(next)
     }
 
     fn print(&self) {
@@ -50,12 +43,18 @@ impl Gol for GameState {
 }
 
 impl GameState {
-    pub fn from_random(size: usize) -> GameState {
+    fn new(size: usize) -> Self {
+        GameState {
+            game_size: size,
+            state: vec![false; size * size],
+        }
+    }
+    pub fn from_random(size: usize) -> Box<dyn Gol>  {
         let mut new_game = GameState::new(size);
         for field in &mut new_game.state {
             *field = rand::random();
         }
-        new_game
+        Box::new(new_game)
     }
 
     pub fn from_previous_parallel(previous: &GameState, threads: usize) -> GameState {
