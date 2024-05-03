@@ -1,10 +1,10 @@
+pub mod compute;
 pub mod cpu;
 pub mod cpu_ndarray;
-pub mod compute;
 
 #[cfg(test)]
 mod tests {
-    use super::{cpu, cpu_ndarray, compute};
+    use super::{compute, cpu, cpu_ndarray};
     use crate::Gol;
 
     // cpu

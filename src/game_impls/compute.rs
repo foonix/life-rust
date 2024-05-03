@@ -63,14 +63,14 @@ impl GameState {
 }
 
 impl Gol for GameState {
-    fn from_slice(size: usize, vec: &[bool]) -> Self
+    fn from_slice(size: usize, slice: &[bool]) -> Self
     where
         Self: Sized,
     {
         let context = Arc::new(VulkanContext::try_create().unwrap());
 
         let game_state =
-            context.compute_buffer_from_iter(vec.iter().map(|b| if *b { 1 } else { 0 }));
+            context.compute_buffer_from_iter(slice.iter().map(|b| if *b { 1 } else { 0 }));
 
         let bounds_buffer =
             context.uniform_buffer_from_iter([size as u32, size as u32].into_iter());
@@ -87,8 +87,8 @@ impl Gol for GameState {
     }
 
     fn to_vec(&self) -> Vec<bool> {
-        let foo = self.game_state.read().unwrap();
-        Vec::from_iter(foo.iter().map(|x| *x > 0u32))
+        let buffer_content = self.game_state.read().unwrap();
+        Vec::from_iter(buffer_content.iter().map(|x| *x > 0u32))
     }
 
     fn to_next(&self) -> Box<dyn Gol> {
@@ -122,7 +122,7 @@ impl Gol for GameState {
         )
         .unwrap();
 
-        let work_group_counts = [self.size.0 as u32 / 8 + 1, self.size.1 as u32 / 8+1, 1];
+        let work_group_counts = [self.size.0 as u32 / 8 + 1, self.size.1 as u32 / 8 + 1, 1];
 
         command_buffer_builder
             .bind_pipeline_compute(self.cs.clone())

@@ -29,7 +29,10 @@ fn main() {
     match vulkan_context_result {
         Ok(context) => {
             vulkan_context = Arc::new(context);
-            back = Box::new(compute::GameState::from_random(vulkan_context.clone(), size));
+            back = Box::new(compute::GameState::from_random(
+                vulkan_context.clone(),
+                size,
+            ));
         }
         Err(e) => {
             println!("Failed to initialize Vulkan context: {:?}", e);

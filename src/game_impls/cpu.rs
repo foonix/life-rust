@@ -9,11 +9,11 @@ pub struct GameState {
 }
 
 impl Gol for GameState {
-    fn from_slice(size: usize, vec: &[bool]) -> GameState {
-        debug_assert!(size * size == vec.len());
+    fn from_slice(size: usize, slice: &[bool]) -> GameState {
+        debug_assert!(size * size == slice.len());
         GameState {
             game_size: size,
-            state: vec.to_owned(),
+            state: slice.to_owned(),
         }
     }
 
@@ -49,7 +49,7 @@ impl GameState {
             state: vec![false; size * size],
         }
     }
-    pub fn from_random(size: usize) -> Box<dyn Gol>  {
+    pub fn from_random(size: usize) -> Box<dyn Gol> {
         let mut new_game = GameState::new(size);
         for field in &mut new_game.state {
             *field = rand::random();

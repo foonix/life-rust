@@ -93,7 +93,7 @@ impl VulkanContext {
         );
 
         let descriptor_set_allocator =
-        StandardDescriptorSetAllocator::new(device.clone(), Default::default());
+            StandardDescriptorSetAllocator::new(device.clone(), Default::default());
 
         let context = VulkanContext {
             device,
@@ -107,7 +107,7 @@ impl VulkanContext {
     }
 
     fn compute_buffer_uninit(&self, size: usize) -> Subbuffer<[u32]> {
-        let data_buffer = Buffer::new_slice::<u32>(
+        Buffer::new_slice::<u32>(
             self.memory_allocator.clone(),
             BufferCreateInfo {
                 usage: BufferUsage::STORAGE_BUFFER,
@@ -118,18 +118,16 @@ impl VulkanContext {
                     | MemoryTypeFilter::HOST_RANDOM_ACCESS,
                 ..Default::default()
             },
-            size as DeviceSize
+            size as DeviceSize,
         )
-        .expect("failed to create buffer");
-
-        data_buffer
+        .expect("failed to create buffer")
     }
 
     fn compute_buffer_from_iter(
         &self,
         content: impl ExactSizeIterator<Item = u32>,
     ) -> Subbuffer<[u32]> {
-        let data_buffer = Buffer::from_iter(
+        Buffer::from_iter(
             self.memory_allocator.clone(),
             BufferCreateInfo {
                 usage: BufferUsage::STORAGE_BUFFER,
@@ -142,16 +140,14 @@ impl VulkanContext {
             },
             content,
         )
-        .expect("failed to create buffer");
-
-        data_buffer
+        .expect("failed to create buffer")
     }
 
     fn uniform_buffer_from_iter(
         &self,
         content: impl ExactSizeIterator<Item = u32>,
     ) -> Subbuffer<[u32]> {
-        let data_buffer = Buffer::from_iter(
+        Buffer::from_iter(
             self.memory_allocator.clone(),
             BufferCreateInfo {
                 usage: BufferUsage::UNIFORM_BUFFER,
@@ -164,8 +160,6 @@ impl VulkanContext {
             },
             content,
         )
-        .expect("failed to create buffer");
-
-        data_buffer
+        .expect("failed to create buffer")
     }
 }
