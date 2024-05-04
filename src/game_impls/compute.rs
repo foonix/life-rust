@@ -3,7 +3,7 @@ use std::sync::Arc;
 use vulkano::{
     buffer::Subbuffer,
     command_buffer::{AutoCommandBufferBuilder, CommandBufferUsage},
-    descriptor_set::{PersistentDescriptorSet, WriteDescriptorSet},
+    descriptor_set::{layout::DescriptorSetLayout, PersistentDescriptorSet, WriteDescriptorSet},
     pipeline::{
         compute::ComputePipelineCreateInfo, layout::PipelineDescriptorSetLayoutCreateInfo,
         ComputePipeline, Pipeline, PipelineBindPoint, PipelineLayout,
@@ -19,6 +19,7 @@ pub struct GameState {
     context: Arc<VulkanContext>,
     game_state: Subbuffer<[u32]>,
     cs: Arc<ComputePipeline>,
+    descriptor_set_layout: Arc<DescriptorSetLayout>,
     bounds_buffer: Subbuffer<[u32]>,
 }
 
@@ -30,18 +31,21 @@ impl GameState {
         let bounds_buffer =
             context.uniform_buffer_from_iter([size as u32, size as u32].into_iter());
 
-        let compute_pipeline = Self::create_pipeline(context.clone());
+        let (compute_pipeline, descriptor_set_layout) = Self::create_pipeline(context.clone());
 
         GameState {
             size: (size, size),
             context: context.clone(),
             game_state,
             cs: compute_pipeline,
+            descriptor_set_layout,
             bounds_buffer,
         }
     }
 
-    fn create_pipeline(context: Arc<VulkanContext>) -> Arc<ComputePipeline> {
+    fn create_pipeline(
+        context: Arc<VulkanContext>,
+    ) -> (Arc<ComputePipeline>, Arc<DescriptorSetLayout>) {
         let shader = cs::load(context.device.clone()).expect("failed to create shader module");
         let cs = shader.entry_point("main").unwrap();
         let stage = PipelineShaderStageCreateInfo::new(cs);
@@ -53,12 +57,21 @@ impl GameState {
         )
         .unwrap();
 
-        ComputePipeline::new(
-            context.device.clone(),
-            None,
-            ComputePipelineCreateInfo::stage_layout(stage, layout),
+        let descriptor_set_layouts = layout.set_layouts();
+        let descriptor_set_layout_index = 0;
+        let descriptor_set_layout = descriptor_set_layouts
+            .get(descriptor_set_layout_index)
+            .unwrap();
+
+        (
+            ComputePipeline::new(
+                context.device.clone(),
+                None,
+                ComputePipelineCreateInfo::stage_layout(stage, layout.clone()),
+            )
+            .expect("failed to create compute pipeline"),
+            descriptor_set_layout.clone(),
         )
-        .expect("failed to create compute pipeline")
     }
 }
 
@@ -75,13 +88,14 @@ impl Gol for GameState {
         let bounds_buffer =
             context.uniform_buffer_from_iter([size as u32, size as u32].into_iter());
 
-        let compute_pipeline = Self::create_pipeline(context.clone());
+        let (compute_pipeline, descriptor_set_layout) = Self::create_pipeline(context.clone());
 
         GameState {
             size: (size, size),
             context: context.clone(),
             game_state,
             cs: compute_pipeline,
+            descriptor_set_layout,
             bounds_buffer,
         }
     }
@@ -96,16 +110,9 @@ impl Gol for GameState {
             .context
             .compute_buffer_uninit(self.size.0 * self.size.1);
 
-        let pipeline_layout = self.cs.layout();
-
-        let descriptor_set_layouts = pipeline_layout.set_layouts();
-        let descriptor_set_layout_index = 0;
-        let descriptor_set_layout = descriptor_set_layouts
-            .get(descriptor_set_layout_index)
-            .unwrap();
         let descriptor_set = PersistentDescriptorSet::new(
             &self.context.descriptor_set_allocator,
-            descriptor_set_layout.clone(),
+            self.descriptor_set_layout.clone(),
             [
                 WriteDescriptorSet::buffer(0, self.bounds_buffer.clone()),
                 WriteDescriptorSet::buffer(1, self.game_state.clone()),
@@ -134,7 +141,7 @@ impl Gol for GameState {
             .bind_descriptor_sets(
                 PipelineBindPoint::Compute,
                 self.cs.layout().clone(),
-                descriptor_set_layout_index as u32,
+                0,
                 descriptor_set,
             )
             .unwrap()
@@ -156,6 +163,7 @@ impl Gol for GameState {
             context: self.context.clone(),
             game_state: next_state,
             cs: self.cs.clone(),
+            descriptor_set_layout: self.descriptor_set_layout.clone(),
             bounds_buffer: self.bounds_buffer.clone(),
         })
     }
