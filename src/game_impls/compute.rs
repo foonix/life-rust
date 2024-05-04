@@ -122,7 +122,11 @@ impl Gol for GameState {
         )
         .unwrap();
 
-        let work_group_counts = [self.size.0 as u32 / 8 + 1, self.size.1 as u32 / 8 + 1, 1];
+        let work_group_counts = [
+            (self.size.0 as u32 - 1) / 8 + 1,
+            (self.size.1 as u32 - 1) / 8 + 1,
+            1,
+        ];
 
         command_buffer_builder
             .bind_pipeline_compute(self.cs.clone())
