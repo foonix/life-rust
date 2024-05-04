@@ -1,3 +1,4 @@
+use std::fmt::Display;
 use std::sync::Arc;
 use vulkano::buffer::{Buffer, BufferCreateInfo, BufferUsage, Subbuffer};
 use vulkano::command_buffer::allocator::{
@@ -161,5 +162,16 @@ impl VulkanContext {
             content,
         )
         .expect("failed to create buffer")
+    }
+}
+
+impl Display for VulkanContext {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "Using device: {:?} queue family: {:?}",
+            self.device.physical_device().properties().device_name,
+            self.queue.queue_family_index()
+        )
     }
 }

@@ -15,7 +15,7 @@ vulkano-shaders = "0.34.0"
 criterion = "0.5"
 
 [[bench]]
-name = "cpu_game_benchmark"
+name = "game_benchmarks"
 harness = false
 
 [profile.bench]
