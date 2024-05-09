@@ -18,7 +18,7 @@ pub struct GameState {
     size: (usize, usize),
     context: Arc<VulkanContext>,
     game_state: Subbuffer<[u32]>,
-    cs: Arc<ComputePipeline>,
+    compute_pipeline: Arc<ComputePipeline>,
     descriptor_set_layout: Arc<DescriptorSetLayout>,
     bounds_buffer: Subbuffer<[u32]>,
 }
@@ -37,7 +37,7 @@ impl GameState {
             size: (size, size),
             context: context.clone(),
             game_state,
-            cs: compute_pipeline,
+            compute_pipeline,
             descriptor_set_layout,
             bounds_buffer,
         }
@@ -94,7 +94,7 @@ impl Gol for GameState {
             size: (size, size),
             context: context.clone(),
             game_state,
-            cs: compute_pipeline,
+            compute_pipeline,
             descriptor_set_layout,
             bounds_buffer,
         }
@@ -136,11 +136,11 @@ impl Gol for GameState {
         ];
 
         command_buffer_builder
-            .bind_pipeline_compute(self.cs.clone())
+            .bind_pipeline_compute(self.compute_pipeline.clone())
             .unwrap()
             .bind_descriptor_sets(
                 PipelineBindPoint::Compute,
-                self.cs.layout().clone(),
+                self.compute_pipeline.layout().clone(),
                 0,
                 descriptor_set,
             )
@@ -162,7 +162,7 @@ impl Gol for GameState {
             size: self.size,
             context: self.context.clone(),
             game_state: next_state,
-            cs: self.cs.clone(),
+            compute_pipeline: self.compute_pipeline.clone(),
             descriptor_set_layout: self.descriptor_set_layout.clone(),
             bounds_buffer: self.bounds_buffer.clone(),
         })
