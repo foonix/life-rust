@@ -47,10 +47,21 @@ pub fn compute_benchmark(c: &mut Criterion) {
     );
 }
 
+pub fn compute_benchmark_512(c: &mut Criterion) {
+    let context = Arc::new(life_rust::VulkanContext::try_create().unwrap());
+
+    c.bench_with_input(
+        BenchmarkId::new("life 512x64 (compute)", &context),
+        &context.clone(),
+        |b, c| b.iter(|| run_life_compute(black_box(512), black_box(64), c.clone())),
+    );
+}
+
 criterion_group!(
     benches,
     cpu_benchmark,
     cpu_ndarray_benchmark,
-    compute_benchmark
+    compute_benchmark,
+    compute_benchmark_512,
 );
 criterion_main!(benches);
