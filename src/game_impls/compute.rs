@@ -133,7 +133,7 @@ impl Gol for GameState {
 
         let mut command_buffer_builder = AutoCommandBufferBuilder::primary(
             &self.context.command_buffer_allocator,
-            self.context.queue.queue_family_index(),
+            self.context.compute_queue.queue_family_index(),
             CommandBufferUsage::OneTimeSubmit,
         )
         .unwrap();
@@ -160,7 +160,7 @@ impl Gol for GameState {
         let command_buffer = command_buffer_builder.build().unwrap();
 
         let future = sync::now(self.context.device.clone())
-            .then_execute(self.context.queue.clone(), command_buffer)
+            .then_execute(self.context.compute_queue.clone(), command_buffer)
             .unwrap()
             .then_signal_fence_and_flush()
             .unwrap();

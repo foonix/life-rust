@@ -34,7 +34,9 @@ pub trait Gol {
 // Common Vulkan ojects for allocating compute or graphics resources.
 pub struct VulkanContext {
     device: Arc<Device>,
-    queue: Arc<Queue>,
+    graphics_queue: Arc<Queue>,
+    compute_queue: Arc<Queue>,
+    transfer_queue: Arc<Queue>,
     memory_allocator: Arc<GenericMemoryAllocator<FreeListAllocator>>,
     command_buffer_allocator: StandardCommandBufferAllocator,
     descriptor_set_allocator: StandardDescriptorSetAllocator,
@@ -61,7 +63,7 @@ impl VulkanContext {
             .next()
             .expect("no devices available");
 
-        let queue_family_index = physical_device
+        let graphics_queue_family_index = physical_device
             .queue_family_properties()
             .iter()
             .enumerate()
@@ -76,22 +78,82 @@ impl VulkanContext {
         println!(
             "Using device: {:?} queue family: {:?}",
             physical_device.properties().device_name,
-            queue_family_index
+            graphics_queue_family_index
         );
 
-        let (device, mut queues) = Device::new(
+        let mut queue_create_infos = vec![QueueCreateInfo {
+            queue_family_index: graphics_queue_family_index,
+            ..Default::default()
+        }];
+
+        // Set up compute/transfer queues if available. Default to graphics queue.
+        let graphics_queue_index = 0;
+        let mut compute_queue_index = 0;
+        let mut transfer_queue_index = 0;
+
+        let available_compute_index = physical_device
+            .queue_family_properties()
+            .iter()
+            .enumerate()
+            .position(|(_queue_family_index, queue_family_properties)| {
+                // Look for non-graphics compute queue.
+                // Compute queues can also do transfer.
+                queue_family_properties
+                    .queue_flags
+                    .contains(QueueFlags::COMPUTE)
+                    && !queue_family_properties
+                        .queue_flags
+                        .contains(QueueFlags::GRAPHICS)
+            });
+
+        if let Some(idx) = available_compute_index {
+            queue_create_infos.push(QueueCreateInfo {
+                queue_family_index: idx as u32,
+                ..Default::default()
+            });
+            compute_queue_index = queue_create_infos.len() - 1;
+        }
+
+        let available_transfer_index = physical_device
+            .queue_family_properties()
+            .iter()
+            .enumerate()
+            .position(|(_queue_family_index, queue_family_properties)| {
+                // look for dedicated transfer queue.
+                // compute/graphics queues can also do transfers.
+                queue_family_properties
+                    .queue_flags
+                    .contains(QueueFlags::TRANSFER)
+                    && !queue_family_properties
+                        .queue_flags
+                        .contains(QueueFlags::COMPUTE)
+                    && !queue_family_properties
+                        .queue_flags
+                        .contains(QueueFlags::GRAPHICS)
+            });
+
+        if let Some(idx) = available_transfer_index {
+            queue_create_infos.push(QueueCreateInfo {
+                queue_family_index: idx as u32,
+                ..Default::default()
+            });
+            transfer_queue_index = queue_create_infos.len() - 1;
+        }
+
+        let (device, queues) = Device::new(
             physical_device.clone(),
             DeviceCreateInfo {
-                // here we pass the desired queue family to use by index
-                queue_create_infos: vec![QueueCreateInfo {
-                    queue_family_index,
-                    ..Default::default()
-                }],
+                queue_create_infos,
                 ..Default::default()
             },
         )?;
 
-        let queue = queues.next().unwrap();
+        let queues: Vec<Arc<Queue>> = queues.collect();
+
+        let graphics_queue = queues[graphics_queue_index].clone();
+        let compute_queue = queues[compute_queue_index].clone();
+        let transfer_queue = queues[transfer_queue_index].clone();
+
         let memory_allocator = Arc::new(StandardMemoryAllocator::new_default(device.clone()));
 
         let command_buffer_allocator = StandardCommandBufferAllocator::new(
@@ -104,7 +166,9 @@ impl VulkanContext {
 
         let context = VulkanContext {
             device,
-            queue,
+            graphics_queue,
+            compute_queue,
+            transfer_queue,
             memory_allocator,
             command_buffer_allocator,
             descriptor_set_allocator,
@@ -194,7 +258,7 @@ impl VulkanContext {
         // command buffer to copy staging to image
         let mut builder = AutoCommandBufferBuilder::primary(
             &self.command_buffer_allocator,
-            self.queue.queue_family_index(),
+            self.transfer_queue.queue_family_index(),
             CommandBufferUsage::OneTimeSubmit,
         )
         .unwrap();
@@ -210,7 +274,7 @@ impl VulkanContext {
         let command_buffer = builder.build().unwrap();
 
         let future = sync::now(self.device.clone())
-            .then_execute(self.queue.clone(), command_buffer)
+            .then_execute(self.transfer_queue.clone(), command_buffer)
             .unwrap()
             .then_signal_fence_and_flush()
             .unwrap();
@@ -243,7 +307,7 @@ impl VulkanContext {
         // command buffer to copy to image to buffer
         let mut builder = AutoCommandBufferBuilder::primary(
             &self.command_buffer_allocator,
-            self.queue.queue_family_index(),
+            self.transfer_queue.queue_family_index(),
             CommandBufferUsage::OneTimeSubmit,
         )
         .unwrap();
@@ -259,7 +323,7 @@ impl VulkanContext {
         let command_buffer = builder.build().unwrap();
 
         let future = sync::now(self.device.clone())
-            .then_execute(self.queue.clone(), command_buffer)
+            .then_execute(self.transfer_queue.clone(), command_buffer)
             .unwrap()
             .then_signal_fence_and_flush()
             .unwrap();
@@ -276,7 +340,7 @@ impl Display for VulkanContext {
             f,
             "Using device: {:?} queue family: {:?}",
             self.device.physical_device().properties().device_name,
-            self.queue.queue_family_index()
+            self.graphics_queue.queue_family_index()
         )
     }
 }
