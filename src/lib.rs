@@ -4,15 +4,21 @@ use vulkano::buffer::{Buffer, BufferCreateInfo, BufferUsage, Subbuffer};
 use vulkano::command_buffer::allocator::{
     StandardCommandBufferAllocator, StandardCommandBufferAllocatorCreateInfo,
 };
+use vulkano::command_buffer::{
+    AutoCommandBufferBuilder, CommandBufferUsage, CopyBufferToImageInfo, CopyImageToBufferInfo,
+};
 use vulkano::descriptor_set::allocator::StandardDescriptorSetAllocator;
 use vulkano::device::{Device, DeviceCreateInfo, QueueCreateInfo};
 use vulkano::device::{Queue, QueueFlags};
+use vulkano::format::Format;
+use vulkano::image::{Image, ImageCreateInfo, ImageType, ImageUsage};
 use vulkano::instance::{Instance, InstanceCreateInfo};
 use vulkano::memory::allocator::{
     AllocationCreateInfo, FreeListAllocator, GenericMemoryAllocator, MemoryTypeFilter,
     StandardMemoryAllocator,
 };
-use vulkano::{DeviceSize, Validated, VulkanError, VulkanLibrary};
+use vulkano::sync::{self, GpuFuture};
+use vulkano::{Validated, VulkanError, VulkanLibrary};
 
 pub mod game_impls;
 
@@ -107,43 +113,6 @@ impl VulkanContext {
         Ok(context)
     }
 
-    fn compute_buffer_uninit(&self, size: usize) -> Subbuffer<[u32]> {
-        Buffer::new_slice::<u32>(
-            self.memory_allocator.clone(),
-            BufferCreateInfo {
-                usage: BufferUsage::STORAGE_BUFFER,
-                ..Default::default()
-            },
-            AllocationCreateInfo {
-                memory_type_filter: MemoryTypeFilter::PREFER_DEVICE
-                    | MemoryTypeFilter::HOST_RANDOM_ACCESS,
-                ..Default::default()
-            },
-            size as DeviceSize,
-        )
-        .expect("failed to create buffer")
-    }
-
-    fn compute_buffer_from_iter(
-        &self,
-        content: impl ExactSizeIterator<Item = u32>,
-    ) -> Subbuffer<[u32]> {
-        Buffer::from_iter(
-            self.memory_allocator.clone(),
-            BufferCreateInfo {
-                usage: BufferUsage::STORAGE_BUFFER,
-                ..Default::default()
-            },
-            AllocationCreateInfo {
-                memory_type_filter: MemoryTypeFilter::PREFER_DEVICE
-                    | MemoryTypeFilter::HOST_SEQUENTIAL_WRITE,
-                ..Default::default()
-            },
-            content,
-        )
-        .expect("failed to create buffer")
-    }
-
     fn uniform_buffer_from_iter(
         &self,
         content: impl ExactSizeIterator<Item = u32>,
@@ -162,6 +131,142 @@ impl VulkanContext {
             content,
         )
         .expect("failed to create buffer")
+    }
+
+    fn uninitialized_image(&self, extent: [u32; 3]) -> Arc<Image> {
+        Image::new(
+            self.memory_allocator.clone(),
+            ImageCreateInfo {
+                image_type: ImageType::Dim2d,
+                format: Format::R8_UINT,
+                extent,
+                usage: ImageUsage::TRANSFER_DST | ImageUsage::TRANSFER_SRC | ImageUsage::STORAGE,
+                ..Default::default()
+            },
+            AllocationCreateInfo {
+                memory_type_filter: MemoryTypeFilter::PREFER_DEVICE,
+                ..Default::default()
+            },
+        )
+        .unwrap()
+    }
+
+    fn image_from_iter(
+        &self,
+        extents: [u32; 3],
+        content: impl ExactSizeIterator<Item = u8>,
+    ) -> Arc<Image> {
+        // allocate and populate staging buffer
+        let buffer = Buffer::from_iter(
+            self.memory_allocator.clone(),
+            BufferCreateInfo {
+                usage: BufferUsage::STORAGE_BUFFER | BufferUsage::TRANSFER_SRC,
+                ..Default::default()
+            },
+            AllocationCreateInfo {
+                memory_type_filter: MemoryTypeFilter::PREFER_HOST
+                    | MemoryTypeFilter::HOST_SEQUENTIAL_WRITE,
+                ..Default::default()
+            },
+            content,
+        )
+        .expect("failed to create transfer buffer");
+
+        assert!(buffer.size() == (extents[0] * extents[1] * extents[2]) as u64);
+
+        // create image
+        let image = Image::new(
+            self.memory_allocator.clone(),
+            ImageCreateInfo {
+                image_type: ImageType::Dim2d,
+                format: Format::R8_UINT,
+                extent: extents,
+                usage: ImageUsage::TRANSFER_DST | ImageUsage::TRANSFER_SRC | ImageUsage::STORAGE,
+                ..Default::default()
+            },
+            AllocationCreateInfo {
+                memory_type_filter: MemoryTypeFilter::PREFER_DEVICE,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+
+        // command buffer to copy staging to image
+        let mut builder = AutoCommandBufferBuilder::primary(
+            &self.command_buffer_allocator,
+            self.queue.queue_family_index(),
+            CommandBufferUsage::OneTimeSubmit,
+        )
+        .unwrap();
+
+        builder
+            .copy_buffer_to_image(CopyBufferToImageInfo::buffer_image(
+                buffer.clone(),
+                image.clone(),
+            ))
+            .unwrap();
+
+        // submit buffer and join
+        let command_buffer = builder.build().unwrap();
+
+        let future = sync::now(self.device.clone())
+            .then_execute(self.queue.clone(), command_buffer)
+            .unwrap()
+            .then_signal_fence_and_flush()
+            .unwrap();
+
+        future.wait(None).unwrap();
+
+        image
+    }
+
+    fn buffer_from_image(&self, image: &Arc<Image>) -> Subbuffer<[u8]> {
+        let src_extent = image.extent();
+        // assuming R8
+        let image_size = src_extent[0] * src_extent[1] * src_extent[2];
+
+        let buffer = Buffer::from_iter(
+            self.memory_allocator.clone(),
+            BufferCreateInfo {
+                usage: BufferUsage::STORAGE_BUFFER | BufferUsage::TRANSFER_DST,
+                ..Default::default()
+            },
+            AllocationCreateInfo {
+                memory_type_filter: MemoryTypeFilter::PREFER_HOST
+                    | MemoryTypeFilter::HOST_RANDOM_ACCESS,
+                ..Default::default()
+            },
+            (0..image_size).map(|_| 0u8),
+        )
+        .expect("failed to create transfer buffer");
+
+        // command buffer to copy to image to buffer
+        let mut builder = AutoCommandBufferBuilder::primary(
+            &self.command_buffer_allocator,
+            self.queue.queue_family_index(),
+            CommandBufferUsage::OneTimeSubmit,
+        )
+        .unwrap();
+
+        builder
+            .copy_image_to_buffer(CopyImageToBufferInfo::image_buffer(
+                image.clone(),
+                buffer.clone(),
+            ))
+            .unwrap();
+
+        // submit buffer and join
+        let command_buffer = builder.build().unwrap();
+
+        let future = sync::now(self.device.clone())
+            .then_execute(self.queue.clone(), command_buffer)
+            .unwrap()
+            .then_signal_fence_and_flush()
+            .unwrap();
+
+        future.wait(None).unwrap();
+
+        buffer
     }
 }
 

@@ -4,6 +4,7 @@ use vulkano::{
     buffer::Subbuffer,
     command_buffer::{AutoCommandBufferBuilder, CommandBufferUsage},
     descriptor_set::{layout::DescriptorSetLayout, PersistentDescriptorSet, WriteDescriptorSet},
+    image::{view::ImageView, Image},
     pipeline::{
         compute::ComputePipelineCreateInfo, layout::PipelineDescriptorSetLayoutCreateInfo,
         ComputePipeline, Pipeline, PipelineBindPoint, PipelineLayout,
@@ -17,7 +18,7 @@ use crate::{Gol, VulkanContext};
 pub struct GameState {
     size: (usize, usize),
     context: Arc<VulkanContext>,
-    game_state: Subbuffer<[u32]>,
+    game_state: Arc<Image>,
     compute_pipeline: Arc<ComputePipeline>,
     descriptor_set_layout: Arc<DescriptorSetLayout>,
     bounds_buffer: Subbuffer<[u32]>,
@@ -25,8 +26,10 @@ pub struct GameState {
 
 impl GameState {
     pub fn from_random(context: Arc<VulkanContext>, size: usize) -> GameState {
-        let game_state =
-            context.compute_buffer_from_iter((0..size * size).map(|_| rand::random::<u32>() & 1));
+        let game_state = context.image_from_iter(
+            [size as u32, size as u32, 1],
+            (0..size * size).map(|_| rand::random::<u8>() & 1),
+        );
 
         let bounds_buffer =
             context.uniform_buffer_from_iter([size as u32, size as u32].into_iter());
@@ -82,8 +85,10 @@ impl Gol for GameState {
     {
         let context = Arc::new(VulkanContext::try_create().unwrap());
 
-        let game_state =
-            context.compute_buffer_from_iter(slice.iter().map(|b| if *b { 1 } else { 0 }));
+        let game_state = context.image_from_iter(
+            [size as u32, size as u32, 1],
+            slice.iter().map(|b| if *b { 1u8 } else { 0u8 }),
+        );
 
         let bounds_buffer =
             context.uniform_buffer_from_iter([size as u32, size as u32].into_iter());
@@ -101,22 +106,26 @@ impl Gol for GameState {
     }
 
     fn to_vec(&self) -> Vec<bool> {
-        let buffer_content = self.game_state.read().unwrap();
-        Vec::from_iter(buffer_content.iter().map(|x| *x > 0u32))
+        let buffer_content = self.context.buffer_from_image(&self.game_state);
+        let binding = buffer_content.read().unwrap();
+        Vec::from_iter(binding.iter().map(|x| *x > 0u8))
     }
 
     fn to_next(&self) -> Box<dyn Gol> {
-        let next_state = self
-            .context
-            .compute_buffer_uninit(self.size.0 * self.size.1);
+        let next_state =
+            self.context
+                .uninitialized_image([self.size.0 as u32, self.size.1 as u32, 1]);
+
+        let view_previous = ImageView::new_default(self.game_state.clone()).unwrap();
+        let view_next = ImageView::new_default(next_state.clone()).unwrap();
 
         let descriptor_set = PersistentDescriptorSet::new(
             &self.context.descriptor_set_allocator,
             self.descriptor_set_layout.clone(),
             [
                 WriteDescriptorSet::buffer(0, self.bounds_buffer.clone()),
-                WriteDescriptorSet::buffer(1, self.game_state.clone()),
-                WriteDescriptorSet::buffer(2, next_state.clone()),
+                WriteDescriptorSet::image_view(1, view_previous.clone()),
+                WriteDescriptorSet::image_view(2, view_next.clone()),
             ], // 0 is the binding
             [],
         )
@@ -190,13 +199,9 @@ mod cs {
                 uvec2 game_size;
             } params;
 
-            layout(set = 0, binding = 1) buffer DataIn {
-                uint src[];
-            };
+            layout(set = 0, binding = 1, r8ui) uniform readonly uimage2D src;
 
-            layout(set = 0, binding = 2) buffer DataOut {
-                uint dest[];
-            };
+            layout(set = 0, binding = 2, r8ui) uniform writeonly uimage2D dest;
 
             uint coords_to_idx(uvec2 coords)
             {
@@ -205,11 +210,9 @@ mod cs {
                 return ret;
             }
 
-            uint is_alive(uvec2 coords)
+            uint is_alive(ivec2 coords)
             {
-                uint index_abs = coords_to_idx(coords);
-                
-                return src[index_abs];
+                return imageLoad(src, ivec2(coords % params.game_size)).x;
             }
 
             void main() {
@@ -218,23 +221,23 @@ mod cs {
                     return;
                 }
 
-                uvec2 id = params.game_size + gl_GlobalInvocationID.xy;
+                ivec2 id = ivec2(params.game_size + gl_GlobalInvocationID.xy);
+                ivec2 id_abs = ivec2(gl_GlobalInvocationID.xy);
 
                 uint total = 0;
-                total += is_alive(id + uvec2(-1, -1));
-                total += is_alive(id + uvec2(0, -1));
-                total += is_alive(id + uvec2(1, -1));
+                total += is_alive(id + ivec2(-1, -1));
+                total += is_alive(id + ivec2(0, -1));
+                total += is_alive(id + ivec2(1, -1));
 
-                total += is_alive(id + uvec2(-1, 0));
+                total += is_alive(id + ivec2(-1, 0));
                 // skip self
-                total += is_alive(id + uvec2(1, 0));
+                total += is_alive(id + ivec2(1, 0));
 
-                total += is_alive(id + uvec2(-1, 1));
-                total += is_alive(id + uvec2(0, 1));
-                total += is_alive(id + uvec2(1, 1));
+                total += is_alive(id + ivec2(-1, 1));
+                total += is_alive(id + ivec2(0, 1));
+                total += is_alive(id + ivec2(1, 1));
 
-                uint id_abs = coords_to_idx(id);
-                bool this_is_alive = (src[id_abs] > 0);
+                bool this_is_alive = (imageLoad(src, id_abs).x > 0);
                 bool this_stays_alive = false;
                 if(this_is_alive)
                 {
@@ -243,7 +246,7 @@ mod cs {
                     if(total == 3) this_stays_alive = true;
                 }
 
-                dest[id_abs] = this_stays_alive ? 1 : 0;
+                imageStore(dest, id_abs, uvec4(this_stays_alive ? 1 : 0));
             }
         ",
     }
